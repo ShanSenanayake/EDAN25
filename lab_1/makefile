@@ -1,5 +1,6 @@
 all:
-	./t
+	./t ${ARGS}
+
 
 clean:
 	rm -f *.class

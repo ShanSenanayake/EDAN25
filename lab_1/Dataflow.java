@@ -184,13 +184,15 @@ class Dataflow {
 			vertex[i].listed = true;
 		}
 
+		int count = 0;
 		while (!worklist.isEmpty()) {
 			u = worklist.remove();
+			count++;
 			u.listed = false;
 			u.computeIn(worklist);
 		}
 		end = System.nanoTime();
-
+		System.out.println(count);
 		System.out.println("T = " + (end-begin)/1e9 + " s");
 	}
 

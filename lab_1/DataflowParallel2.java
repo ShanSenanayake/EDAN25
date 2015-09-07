@@ -5,34 +5,63 @@ import java.util.BitSet;
 
 
 
-class Worklist{
+class Worklist<T>{
 	private LinkedList<Vertex> list;
-	private int waitingThreads;
+	private int waitingThreads; 
 	private int kthreads;
+	private int bagSize;
 	private boolean finished;
+
 
 	public Worklist(LinkedList<Vertex> list ,int kthreads){
 		this.list = list;
 		waitingThreads = 0;
+		bagSize = 4;
 		this.kthreads = kthreads;
 		finished = false;
 	}
 
-	public synchronized Vertex getAndAddNode(LinkedList<Vertex> addList) throws InterruptedException{
-		addNodes(addList);
+	public synchronized Vertex getNode() throws InterruptedException{
 		waitingThreads++;
-		if(waitingThreads >= kthreads){
+		if(waitingThreads >= kthreads && list.isEmpty()){
 			finished = true;
+			notifyAll();
+			return null;
 		}
+
 		while(list.isEmpty()){
+			wait();
 			if(finished){
 				return null;
 			}
+		}
+
+		waitingThreads--;
+		return list.poll();
+	}
+
+	public synchronized void addNode(Vertex v){
+		list.addLast(v);
+		notifyAll();
+	}
+
+	public synchronized LinkedList<Vertex> getAndAddNode(LinkedList<Vertex> addList) throws InterruptedException{
+		addNodes(addList);
+		waitingThreads++;
+		if(waitingThreads >= kthreads && list.isEmpty()){
+			finished = true;
+			notifyAll();
+			return null;
+		}
+		while(list.isEmpty()){
 			wait();
+			if(finished){
+				return null;
+			}
 
 		}
 		waitingThreads--;
-		return list.poll();
+		return bag();
 	}
 
 	private void addNodes(LinkedList<Vertex> addList){
@@ -42,32 +71,55 @@ class Worklist{
 		}
 	}
 
+	private LinkedList<Vertex> bag(){
+		LinkedList<Vertex> worklist = new LinkedList<Vertex>();
+		for(int i = 0; i<bagSize; i++){
+			Vertex v = list.poll();
+			if (v == null){
+				return worklist;
+			}
+			worklist.add(v);
+		}
+		return worklist;
+	}
+
 
 
 }
 class Worker extends Thread{
 	private Worklist list;
+	private int count;
 
 
 	public Worker(Worklist list){
 		this.list = list;
+		count = 0;
 	}
 
 	public void run(){
 		LinkedList<Vertex> worklist = new LinkedList<Vertex>();
 		try{
 			while(!isInterrupted()){
-				Vertex v = list.getAndAddNode(worklist);
-				if(v == null){
+
+				//LinkedList<Vertex> jobs = list.getAndAddNode(worklist);
+				Vertex jobs = list.getNode();
+				worklist = new LinkedList<Vertex>();
+				if(jobs == null){
 					throw new InterruptedException();
 				}
-				v.listed = false;
-				System.out.println(v.index);
-				v.computeIn(worklist);
+				jobs.listed = false;
+				count++;
+				jobs.computeIn(list);
+				/*for (Vertex v: jobs){
+					count++;
+					v.listed = false;
+					v.computeIn(worklist);
 
-				}
-			}catch(InterruptedException e){
+				}*/
 			}
+		}catch(InterruptedException e){
+		}
+		System.out.println(count);
 	}
 }
 
@@ -111,7 +163,7 @@ class Vertex {
 		def	= new BitSet();
 	}
 
-	void computeIn(LinkedList<Vertex> worklist)
+	void computeIn(Worklist worklist)
 	{
 		int			i;
 		BitSet			old;
@@ -142,7 +194,7 @@ class Vertex {
 			while (iter.hasNext()) {
 				v = iter.next();
 				if (!v.listed) {
-					worklist.addLast(v);
+					worklist.addNode(v);
 					v.listed = true;
 				}
 			}
