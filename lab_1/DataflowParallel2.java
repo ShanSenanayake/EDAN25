@@ -5,11 +5,76 @@ import java.util.BitSet;
 
 
 
+class Worklist{
+	private LinkedList<Vertex> list;
+	private int waitingThreads;
+	private int kthreads;
+	private boolean finished;
+
+	public Worklist(LinkedList<Vertex> list ,int kthreads){
+		this.list = list;
+		waitingThreads = 0;
+		this.kthreads = kthreads;
+		finished = false;
+	}
+
+	public synchronized Vertex getAndAddNode(LinkedList<Vertex> addList) throws InterruptedException{
+		addNodes(addList);
+		waitingThreads++;
+		if(waitingThreads >= kthreads){
+			finished = true;
+		}
+		while(list.isEmpty()){
+			if(finished){
+				return null;
+			}
+			wait();
+
+		}
+		waitingThreads--;
+		return list.poll();
+	}
+
+	private void addNodes(LinkedList<Vertex> addList){
+		if(addList != null && !addList.isEmpty()){
+			list.addAll(addList);
+			notifyAll();
+		}
+	}
+
+
+
+}
+class Worker extends Thread{
+	private Worklist list;
+
+
+	public Worker(Worklist list){
+		this.list = list;
+	}
+
+	public void run(){
+		LinkedList<Vertex> worklist = new LinkedList<Vertex>();
+		try{
+			while(!isInterrupted()){
+				Vertex v = list.getAndAddNode(worklist);
+				if(v == null){
+					throw new InterruptedException();
+				}
+				v.listed = false;
+				System.out.println(v.index);
+				v.computeIn(worklist);
+
+				}
+			}catch(InterruptedException e){
+			}
+	}
+}
 
 class Random {
 	int	w;
 	int	z;
-	
+
 	public Random(int seed)
 	{
 		w = seed + 1;
@@ -27,10 +92,10 @@ class Random {
 
 class Vertex {
 	int			index;
-	boolean			listed;
+	volatile boolean			listed;
 	LinkedList<Vertex>	pred;
 	LinkedList<Vertex>	succ;
-	BitSet			in;
+	volatile BitSet			in;
 	BitSet			out;
 	BitSet			use;
 	BitSet			def;
@@ -64,10 +129,12 @@ class Vertex {
 
 		// in = use U (out - def)
 
-		in = new BitSet();
-		in.or(out);	
-		in.andNot(def);	
-		in.or(use);
+
+		BitSet new_in = new BitSet();
+		new_in.or(out);
+		new_in.andNot(def);
+		new_in.or(use);
+		in = new_in;
 
 		if (!in.equals(old)) {
 			iter = pred.listIterator();
@@ -131,7 +198,7 @@ class DataflowParallel2 {
 
 		connect(vertex[0], vertex[1]);
 		connect(vertex[0], vertex[2]);
-		
+
 		for (i = 2; i < vertex.length; ++i) {
 			s = (r.nextInt() % maxsucc) + 1;
 			for (j = 0; j < s; ++j) {
@@ -141,7 +208,7 @@ class DataflowParallel2 {
 		}
 	}
 
-	public static void generateUseDef(	
+	public static void generateUseDef(
 		Vertex	vertex[],
 		int	nsym,
 		int	nactive,
@@ -168,7 +235,7 @@ class DataflowParallel2 {
 		}
 	}
 
-	public static void liveness(Vertex vertex[])
+	public static void liveness(Vertex vertex[], int kthreads)
 	{
 		Vertex			u;
 		Vertex			v;
@@ -187,11 +254,24 @@ class DataflowParallel2 {
 			vertex[i].listed = true;
 		}
 
-		while (!worklist.isEmpty()) {
+		Worklist list = new Worklist(worklist, kthreads);
+		Worker threads[] = new Worker[kthreads];
+		for (i = 0; i<kthreads; i++){
+			threads[i] = new Worker(list);
+			threads[i].start();
+		}
+		for(i = 0; i<kthreads; i++){
+			try{
+				threads[i].join();
+			}catch(InterruptedException e){
+
+			}
+		}
+		/*while (!worklist.isEmpty()) {
 			u = worklist.remove();
 			u.listed = false;
 			u.computeIn(worklist);
-		}
+		}*/
 		end = System.nanoTime();
 
 		System.out.println("T = " + (end-begin)/1e9 + " s");
@@ -217,7 +297,7 @@ class DataflowParallel2 {
 		nactive = Integer.parseInt(args[3]);
 		nthread = Integer.parseInt(args[4]);
 		print = Integer.parseInt(args[5]) != 0;
-	
+
 		System.out.println("nsym = " + nsym);
 		System.out.println("nvertex = " + nvertex);
 		System.out.println("maxsucc = " + maxsucc);
@@ -230,7 +310,7 @@ class DataflowParallel2 {
 
 		generateCFG(vertex, maxsucc, r);
 		generateUseDef(vertex, nsym, nactive, r);
-		liveness(vertex);
+		liveness(vertex,nthread);
 
 		if (print)
 			for (i = 0; i < vertex.length; ++i)

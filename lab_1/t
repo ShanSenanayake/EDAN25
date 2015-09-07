@@ -13,4 +13,4 @@ P=1
 #P=0
 
 javac Dataflow.java && java -Xmx2048M Dataflow $S $V $U $A $T $P > dataflow.txt
-javac DataflowParallel.java && java -Xmx2048M DataflowParallel $S $V $U $A $T $P > dataflow_parallel.txt
+javac DataflowParallel2.java && java -Xmx2048M DataflowParallel2 $S $V $U $A $T $P > dataflow_parallel.txt
