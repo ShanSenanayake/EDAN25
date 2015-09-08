@@ -4,9 +4,10 @@ maxsucc = 4
 nactive = 100
 generating CFG...
 generating usedefs...
+250
 computing liveness...
-938
-2533
-1723
-2077
-T = 0.031860998 s
+2: 1123
+3: 149
+0: 116
+1: 5849
+T = 0.05669569 s

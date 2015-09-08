@@ -2,6 +2,7 @@ import java.util.Iterator;
 import java.util.ListIterator;
 import java.util.LinkedList;
 import java.util.BitSet;
+import java.lang.Math;
 
 
 class Monitor{
@@ -15,14 +16,14 @@ class Monitor{
 	public Monitor(int nthread, int capacity){
 		this.capacity = capacity;
 		this.nthread = nthread;
-		waithingThreads = 0;
+		waitingThreads = 0;
 		finished = false;
 		list = new LinkedList<Vertex>();
 	}
 
 	public synchronized  LinkedList<Vertex> waitForNewWorklist()throws InterruptedException {
 		waitingThreads++;
-		if (waithingThreads >= nthread){
+		if (waitingThreads >= nthread){
 			finished = true;
 			notifyAll();
 			throw new InterruptedException();
@@ -34,21 +35,25 @@ class Monitor{
 			}
 		}
 		LinkedList<Vertex> new_list = new LinkedList<Vertex>();
-		int size = list.size();
-		for (int i = 0; i<capacity; i+){
-			Vertex v = list.pop();
+		int size =Math.min(capacity, (int)(Math.ceil(list.size() / waitingThreads)));
+		if(size <= 0){
+			size = 1;
 		}
-			
+		for (int i = 0; i<size; i++){
+			new_list.add(list.poll());
+		}
+
 		waitingThreads--;
+		return new_list;
 	}
 
 	public synchronized LinkedList<Vertex> addToNetworkList(LinkedList<Vertex> worklist) {
-		int size = worklist.size() / 4;
+		int size = worklist.size() / nthread;
 		LinkedList<Vertex> new_list = new LinkedList<Vertex>();
 		for (int i = 0; i<size;i++){
 			new_list.add(worklist.poll());
 		}
-		list.addAll(workList);
+		list.addAll(worklist);
 		notifyAll();
 		return new_list;
 	}
@@ -62,8 +67,10 @@ class Worker extends Thread{
 	private int capacity;
 	private int id;
 	private LinkedList<Vertex> worklist;	
+	private Monitor monitor;
 
-	public Worker(LinkedList<Vertex> worklist, int id, int capacity){
+	public Worker(Monitor monitor ,LinkedList<Vertex> worklist, int id, int capacity){
+		this.monitor = monitor;
 		this.worklist = worklist;
 		this.capacity = capacity;
 		this.id = id;
@@ -71,11 +78,20 @@ class Worker extends Thread{
 	}
 
 	public void run(){
-		while(!worklist.isEmpty()){
-			Vertex v = worklist.removeFirst();
-			count++;
-			v.listed = false;
-			v.computeIn(worklist);
+		try{
+			while(!isInterrupted()){
+				if(worklist.size() >= capacity){
+					worklist = monitor.addToNetworkList(worklist);
+				}
+				 if(worklist.isEmpty()){
+					worklist = monitor.waitForNewWorklist();
+				}
+				Vertex v = worklist.poll();
+				count++;
+				v.listed = false;
+				v.computeIn(worklist);
+			}
+		}catch(InterruptedException e){
 		}
 		System.out.println(id + ": " + count);
 
@@ -88,7 +104,7 @@ class Worker extends Thread{
 class Random {
 	int	w;
 	int	z;
-	
+
 	public Random(int seed)
 	{
 		w = seed + 1;
@@ -148,7 +164,7 @@ class Vertex {
 		new_in.andNot(def);	
 		new_in.or(use);
 		in = new_in;
-		
+
 		if (!in.equals(old)) {
 			iter = pred.listIterator();
 
@@ -211,7 +227,7 @@ class DataflowParallel3 {
 
 		connect(vertex[0], vertex[1]);
 		connect(vertex[0], vertex[2]);
-		
+
 		for (i = 2; i < vertex.length; ++i) {
 			s = (r.nextInt() % maxsucc) + 1;
 			for (j = 0; j < s; ++j) {
@@ -222,10 +238,10 @@ class DataflowParallel3 {
 	}
 
 	public static void generateUseDef(	
-		Vertex	vertex[],
-		int	nsym,
-		int	nactive,
-		Random	r)
+			Vertex	vertex[],
+			int	nsym,
+			int	nactive,
+			Random	r)
 	{
 		int	i;
 		int	j;
@@ -248,7 +264,7 @@ class DataflowParallel3 {
 		}
 	}
 
-	public static void liveness(Vertex vertex[], int nthread)
+	public static void liveness(Vertex vertex[], int nthread, int nvertex)
 	{
 		Vertex			u;
 		Vertex			v;
@@ -258,13 +274,15 @@ class DataflowParallel3 {
 		long			end;
 		Worker			workers[] = new Worker[nthread];
 		LinkedList<Vertex>	worklists[] = new LinkedList[nthread];
-
-
+		int 			capacity = nvertex / nthread;
+		
+		System.out.println(capacity);
 		System.out.println("computing liveness...");
 
 		begin = System.nanoTime();
+		Monitor monitor = new Monitor(nthread,capacity);
 		worklist = new LinkedList<Vertex>();
-		
+
 		for (i = 0; i<nthread; ++i){
 			worklists[i] = new LinkedList<Vertex>();
 		}
@@ -275,7 +293,7 @@ class DataflowParallel3 {
 		}
 
 		for (i = 0; i<nthread; ++i){
-			workers[i] = new Worker(worklists[i], i);
+			workers[i] = new Worker(monitor,worklists[i], i, capacity);
 			workers[i].start();
 		}
 
@@ -309,7 +327,7 @@ class DataflowParallel3 {
 		nactive = Integer.parseInt(args[3]);
 		nthread = Integer.parseInt(args[4]);
 		print = Integer.parseInt(args[5]) != 0;
-	
+
 		System.out.println("nsym = " + nsym);
 		System.out.println("nvertex = " + nvertex);
 		System.out.println("maxsucc = " + maxsucc);
@@ -322,7 +340,7 @@ class DataflowParallel3 {
 
 		generateCFG(vertex, maxsucc, r);
 		generateUseDef(vertex, nsym, nactive, r);
-		liveness(vertex,nthread);
+		liveness(vertex,nthread, nvertex);
 
 		if (print)
 			for (i = 0; i < vertex.length; ++i)

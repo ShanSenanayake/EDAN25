@@ -22,4 +22,4 @@ P=$1
 fi
 
 javac Dataflow.java && java -Xmx2048M Dataflow $S $V $U $A $T $P > dataflow.txt
-javac DataflowParallel2.java && java -Xmx2048M DataflowParallel2 $S $V $U $A $T $P > dataflow_parallel.txt
+javac DataflowParallel3.java && java -Xmx2048M DataflowParallel3 $S $V $U $A $T $P > dataflow_parallel.txt
