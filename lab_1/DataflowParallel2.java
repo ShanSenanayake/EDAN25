@@ -101,21 +101,21 @@ class Worker extends Thread{
 		try{
 			while(!isInterrupted()){
 
-				//LinkedList<Vertex> jobs = list.getAndAddNode(worklist);
-				Vertex jobs = list.getNode();
+				LinkedList<Vertex> jobs = list.getAndAddNode(worklist);
+				//Vertex jobs = list.getNode();
 				worklist = new LinkedList<Vertex>();
 				if(jobs == null){
 					throw new InterruptedException();
 				}
-				jobs.listed = false;
+				/*jobs.listed = false;
 				count++;
-				jobs.computeIn(list);
-				/*for (Vertex v: jobs){
+				jobs.computeIn(list);*/
+				for (Vertex v: jobs){
 					count++;
 					v.listed = false;
 					v.computeIn(worklist);
 
-				}*/
+				}
 			}
 		}catch(InterruptedException e){
 		}
@@ -144,10 +144,10 @@ class Random {
 
 class Vertex {
 	int			index;
-	volatile boolean			listed;
+	 boolean			listed;
 	LinkedList<Vertex>	pred;
 	LinkedList<Vertex>	succ;
-	volatile BitSet			in;
+	BitSet			in;
 	BitSet			out;
 	BitSet			use;
 	BitSet			def;
@@ -163,7 +163,7 @@ class Vertex {
 		def	= new BitSet();
 	}
 
-	void computeIn(Worklist worklist)
+	void computeIn(LinkedList<Vertex> worklist)
 	{
 		int			i;
 		BitSet			old;
@@ -194,7 +194,7 @@ class Vertex {
 			while (iter.hasNext()) {
 				v = iter.next();
 				if (!v.listed) {
-					worklist.addNode(v);
+					worklist.addLast(v);
 					v.listed = true;
 				}
 			}
