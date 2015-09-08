@@ -144,11 +144,11 @@ class Random {
 
 class Vertex {
 	int			index;
-	 boolean			listed;
+	volatile boolean			listed;
 	LinkedList<Vertex>	pred;
 	LinkedList<Vertex>	succ;
-	BitSet			in;
-	BitSet			out;
+	volatile BitSet			in;
+	volatile BitSet			out;
 	BitSet			use;
 	BitSet			def;
 

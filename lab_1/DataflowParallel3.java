@@ -24,6 +24,7 @@ class Monitor{
 		waitingThreads++;
 		if (waithingThreads >= nthread){
 			finished = true;
+			notifyAll();
 			throw new InterruptedException();
 		}
 		while(list.isEmpty()){
@@ -32,7 +33,24 @@ class Monitor{
 				throw new InterruptedException();
 			}
 		}
+		LinkedList<Vertex> new_list = new LinkedList<Vertex>();
+		int size = list.size();
+		for (int i = 0; i<capacity; i+){
+			Vertex v = list.pop();
+		}
 			
+		waitingThreads--;
+	}
+
+	public synchronized LinkedList<Vertex> addToNetworkList(LinkedList<Vertex> worklist) {
+		int size = worklist.size() / 4;
+		LinkedList<Vertex> new_list = new LinkedList<Vertex>();
+		for (int i = 0; i<size;i++){
+			new_list.add(worklist.poll());
+		}
+		list.addAll(workList);
+		notifyAll();
+		return new_list;
 	}
 
 
@@ -41,11 +59,13 @@ class Monitor{
 
 class Worker extends Thread{
 	private int count;
+	private int capacity;
 	private int id;
 	private LinkedList<Vertex> worklist;	
 
-	public Worker(LinkedList<Vertex> worklist, int id){
+	public Worker(LinkedList<Vertex> worklist, int id, int capacity){
 		this.worklist = worklist;
+		this.capacity = capacity;
 		this.id = id;
 		count = 0;
 	}
