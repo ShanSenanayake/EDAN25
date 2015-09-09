@@ -1,0 +1,25 @@
+echo $1
+echo $2
+
+if [ "$1" =     "small" ] ; then
+
+S=100
+V=10
+U=4
+A=10
+T=4
+P=$2
+
+else
+
+S=10000
+V=1000
+U=4
+A=100
+T=4
+P=$1
+
+fi
+
+javac Dataflow.java && java -Xmx2048M Dataflow $S $V $U $A $T $P > dataflow.txt
+javac DataflowParallel3.java && java -Xmx2048M DataflowParallel3 $S $V $U $A $T $P > dataflow_parallel.txt
