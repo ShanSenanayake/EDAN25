@@ -8,6 +8,7 @@ case class Stop();
 case class Ready();
 case class Go();
 case class Change(in: BitSet);
+case class SendMeIn();
 
 class Random(seed: Int) {
         var w = seed + 1;
@@ -63,15 +64,22 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
     react {
       case Start() => {
         controller ! new Ready;
-        //println("started " + index);
+        println("started " + index);
         act();
       }
 
       case Go() => {
         // LAB 2: Start working with this vertex.
+        for (v <- succ){
+          v ! new SendMeIn;
+        }
+
         act();
       }
 
+      case SendMeIn() => {
+        
+      }
       case Stop()  => { }
     }
   }
