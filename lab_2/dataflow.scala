@@ -9,6 +9,7 @@ case class Stop();
 case class Done();
 case class Ready();
 case class Go();
+case class Running();
 case class Change(newIn: BitSet, i: Int);
 case class UpdateIn(newIn: BitSet, newOut: BitSet);
 case class SendMeIn();
@@ -46,6 +47,11 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
         }
         act();
       }
+      case Running() => {
+        started += 1;
+        act();
+      }
+
       case Done() => {
         started -= 1;
         println("CDONE " + started);
@@ -65,8 +71,9 @@ class ComputeVertex() extends Actor {
     def act(){
       react {
         case Compute(inMap: Map[Int, BitSet], out: BitSet, defs: BitSet, uses: BitSet) => {
-          println("computing");
-          inMap.values.map(x => out.or(x));
+          //println("computing");
+          inMap.values.map(out.or(_));
+          //printSet("out", out);
           var in: BitSet = new BitSet();
           // from java-----------
 
@@ -84,6 +91,7 @@ class ComputeVertex() extends Actor {
         }
 
       }
+
     }
 }
 
@@ -115,19 +123,21 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
 
       case Go() => {
         // LAB 2: Start working with this vertex.
+        computer ! new Compute(inMap, out, defs, uses);
         if(succ.size == 0){
-          computer ! new Compute(inMap, out, defs, uses);
           controller ! new Done;
         }
         succ.map(x => x ! new SendMeIn);
-        println("GO " + index + " succsize " + succ.size);
-        succ.map(x => println("giving sendmein to " + x.index +" form " + index ));
+        //println("GO " + index + " succsize " + succ.size);
+        //succ.map(x => println("giving sendmein to " + x.index +" form " + index ));
         act();
       }
 
       case Change(newIn: BitSet, i: Int) => {
+        println("change and runnning " + index)
+        controller ! new Running();
         inMap += (i -> newIn);
-        println("CHANGE " + index + " mapsize " + inMap.size + " succsize " + succ.size);
+        //println("CHANGE " + index + " mapsize " + inMap.size + " succsize " + succ.size);
         if (inMap.size == succ.size){
           computer ! new Compute(inMap,out,defs,uses);
 
@@ -138,11 +148,11 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
 
       case UpdateIn(newIn: BitSet, newOut: BitSet) => {
         out = newOut;
-        println("UPDATEIN " + index);
+        //println("UPDATEIN " + index);
         if(!in.equals(newIn)){
           in = newIn;
-          println("send change " + index);
-          pred.map(x => println("sending change form " + index + " to " + x.index));
+          //println("send change " + index);
+          //pred.map(x => println("sending change form " + index + " to " + x.index));
           pred.map(x => x ! new Change(in, index));
         }else{
           println("should be done " + index);
@@ -153,7 +163,7 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
       }
 
       case SendMeIn() => {
-        println("sendmein " + index);
+        //println("sendmein " + index);
         sender ! new Change(in, index);
         act();
       }
