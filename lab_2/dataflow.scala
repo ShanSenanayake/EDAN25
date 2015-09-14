@@ -1,14 +1,19 @@
 import scala.actors._
+import scala.collection.immutable.HashMap;
 import java.util.BitSet;
 
 // LAB 2: some case classes but you need additional ones too.
 
 case class Start();
 case class Stop();
+case class Done();
 case class Ready();
 case class Go();
-case class Change(in: BitSet);
+case class Change(newIn: BitSet, i: Int);
+case class UpdateIn(newIn: BitSet, newOut: BitSet);
 case class SendMeIn();
+case class Compute(inMap: Map[Int, BitSet], out: BitSet, defs: BitSet, uses: BitSet);
+
 
 class Random(seed: Int) {
         var w = seed + 1;
@@ -41,13 +46,52 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
         }
         act();
       }
+      case Done() => {
+        started -= 1;
+        println("CDONE " + started);
+        if(started == 0){
+          cfg.map(x => x.print);
+          cfg.map(x =>x ! new Stop);
+        }else{
+          act();
+        }
+      }
     }
   }
+}
+
+class ComputeVertex() extends Actor {
+
+    def act(){
+      react {
+        case Compute(inMap: Map[Int, BitSet], out: BitSet, defs: BitSet, uses: BitSet) => {
+          println("computing");
+          inMap.values.map(x => out.or(x));
+          var in: BitSet = new BitSet();
+          // from java-----------
+
+          // in = use U (out - def)
+
+          in.or(out);
+          in.andNot(defs);
+          in.or(uses);
+          //----------------------
+          sender ! new UpdateIn(in, out);
+          act();
+        }
+
+        case Stop() => {
+        }
+
+      }
+    }
 }
 
 class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
   var pred: List[Vertex] = List();
   var succ: List[Vertex] = List();
+  var inMap: Map[Int, BitSet] = new HashMap[Int, BitSet];
+  var computer: ComputeVertex = new ComputeVertex();
   val uses               = new BitSet(s);
   val defs               = new BitSet(s);
   var in                 = new BitSet(s);
@@ -64,23 +108,59 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
     react {
       case Start() => {
         controller ! new Ready;
+        computer.start;
         println("started " + index);
         act();
       }
 
       case Go() => {
         // LAB 2: Start working with this vertex.
-        for (v <- succ){
-          v ! new SendMeIn;
+        if(succ.size == 0){
+          computer ! new Compute(inMap, out, defs, uses);
+          controller ! new Done;
+        }
+        succ.map(x => x ! new SendMeIn);
+        println("GO " + index + " succsize " + succ.size);
+        succ.map(x => println("giving sendmein to " + x.index +" form " + index ));
+        act();
+      }
+
+      case Change(newIn: BitSet, i: Int) => {
+        inMap += (i -> newIn);
+        println("CHANGE " + index + " mapsize " + inMap.size + " succsize " + succ.size);
+        if (inMap.size == succ.size){
+          computer ! new Compute(inMap,out,defs,uses);
+
+        }
+
+        act();
+      }
+
+      case UpdateIn(newIn: BitSet, newOut: BitSet) => {
+        out = newOut;
+        println("UPDATEIN " + index);
+        if(!in.equals(newIn)){
+          in = newIn;
+          println("send change " + index);
+          pred.map(x => println("sending change form " + index + " to " + x.index));
+          pred.map(x => x ! new Change(in, index));
+        }else{
+          println("should be done " + index);
+          controller ! new Done;
         }
 
         act();
       }
 
       case SendMeIn() => {
-        
+        println("sendmein " + index);
+        sender ! new Change(in, index);
+        act();
       }
-      case Stop()  => { }
+      case Stop()  => {
+        println("stop " + index);
+        computer ! new Stop();
+      }
     }
   }
 
@@ -165,8 +245,8 @@ object Driver {
     for (i <- 0 until nvertex)
       cfg(i) ! new Start;
 
-    if (print != 0)
+  /*  if (print != 0)
       for (i <- 0 until nvertex)
-        cfg(i).print;
+        cfg(i).print;*/
   }
 }
