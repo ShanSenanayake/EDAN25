@@ -56,7 +56,9 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
         runMap -= index;
         if (runMap.isEmpty){
           cfg.map(x => x ! new Stop());
+          println("T : " + System.currentTimeMillis()-begin);
           cfg.map(_.print);
+
         }else{
           act();
         }
