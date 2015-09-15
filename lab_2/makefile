@@ -8,7 +8,7 @@ all:
 	@mkdir -p classes
 	#scalac -g:vars -d classes dataflow.scala
 	#scalac -deprecation -d classes dataflow.scala
-	scalac -deprecation -optimise -d classes dataflow2.scala
+	scalac -deprecation -optimise -d classes dataflow_fredrik.scala
 	scala -classpath classes Driver $(NSYM) $(NVERTEX) $(MAXSUCC) $(NACTIVE) $(PRINT) > dataflow_scala.txt
 
 run:
