@@ -13,7 +13,7 @@ case class Running();
 case class Change(newIn: BitSet, i: Int);
 case class UpdateIn(newIn: BitSet, newOut: BitSet);
 case class SendMeIn();
-case class Compute(inMap: Map[Int, BitSet], out: BitSet, defs: BitSet, uses: BitSet);
+case class Compute(newIn: BitSet, out: BitSet, defs: BitSet, uses: BitSet);
 case class UnDone();
 
 
@@ -58,8 +58,9 @@ class Controller(val cfg: Array[Vertex]) extends Actor {
         //println("CDONE " + started);
       //  println("Done " + started)
         if(started == 0){
-          cfg.map(x => x.print);
           cfg.map(x =>x ! new Stop);
+          println("T : " + (System.currentTimeMillis()-begin)/1000.0);
+          cfg.map(x => x.print);
         }else{
           act();
         }
@@ -78,9 +79,10 @@ class ComputeVertex() extends Actor {
 
     def act(){
       react {
-        case Compute(inMap: Map[Int, BitSet], out: BitSet, defs: BitSet, uses: BitSet) => {
+        case Compute(newIn:BitSet, out: BitSet, defs: BitSet, uses: BitSet) => {
           //println("computing");
-          inMap.values.map(out.or(_));
+          //inMap.values.map(out.or(_));
+          out.or(newIn);
           //printSet("out", out);
           var in: BitSet = new BitSet();
           // from java-----------
@@ -106,7 +108,7 @@ class ComputeVertex() extends Actor {
 class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
   var pred: List[Vertex] = List();
   var succ: List[Vertex] = List();
-  var inMap: Map[Int, BitSet] = new HashMap[Int, BitSet];
+  //svar inMap: Map[Int, BitSet] = new HashMap[Int, BitSet];
   var computer: ComputeVertex = new ComputeVertex();
   val uses               = new BitSet(s);
   val defs               = new BitSet(s);
@@ -131,7 +133,7 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
 
       case Go() => {
         // LAB 2: Start working with this vertex.
-        computer ! new Compute(inMap, out, defs, uses);
+        computer ! new Compute(new BitSet(), out, defs, uses);
         //if(succ.size == 0){
           //controller ! new Done;
         //}
@@ -144,10 +146,10 @@ class Vertex(val index: Int, s: Int, val controller: Controller) extends Actor {
       case Change(newIn: BitSet, i: Int) => {
       //  println("change and runnning " + index)
         controller ! new UnDone;
-        inMap += (i -> newIn);
+        //inMap += (i -> newIn);
         //println("CHANGE " + index + " mapsize " + inMap.size + " succsize " + succ.size);
         //if (inMap.size == succ.size){
-          computer ! new Compute(inMap,out,defs,uses);
+          computer ! new Compute(newIn,out,defs,uses);
         //}
         //controller ! new Done;
 
