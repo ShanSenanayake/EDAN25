@@ -10,6 +10,13 @@
 
 #define NBR_THREADS (4)
 
+
+pthread_mutex_t thread_sum;
+
+static int limit = 4;
+
+int n_thread = 1;
+
 struct arg_struct_t
 {
 	void* base;
@@ -48,6 +55,14 @@ void par_sort(
 	int 		i,
 	int		(*cmp)(const void*, const void*)) // Behaves like strcmp
 {
+
+	//lock and handle mutex stuff
+	pthread_mutex_lock(&thread_sum);
+
+	//do stuff with mutex
+	//unlock mutex stuff
+	pthread_mutex_unlock(&thread_sum);
+
 	pthread_t t1,t2;
 	if(i+2<NBR_THREADS)
 	{
@@ -88,6 +103,8 @@ int main(int ac, char** av)
 	int		i;
 	double*		a;
 	double		start, end;
+
+	pthread_mutex_init(&thread_sum, NULL);
 
 	if (ac > 1)
 		sscanf(av[1], "%d", &n);
