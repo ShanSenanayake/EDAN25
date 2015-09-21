@@ -21,12 +21,24 @@ struct arg_struct_t
 
 typedef  struct arg_struct_t arg_struct_t;
 
+void par_sort(
+	void*		base,	// Array to sort.
+	size_t		n,	// Number of elements in base.
+	size_t		s,	// Size of each element.
+	int 		i,
+	int		(*cmp)(const void*, const void*)); // Behaves like strcmp
 
 static double sec(void)
 {
 	struct timeval t;
 	gettimeofday(&t, NULL);
 	return t.tv_sec+(t.tv_usec/1000000.0);
+}
+
+void thread_sort(void *args)
+{
+	arg_struct_t* t = (arg_struct_t*)args;
+	par_sort(t->base,t->n,t->s,t->i,t->cmp);
 }
 
 void par_sort(
@@ -39,31 +51,35 @@ void par_sort(
 	pthread_t t1,t2;
 	if(i+2<NBR_THREADS)
 	{
-		arg_struct_t arg2 = {(char*)(base)+(s*(n/2)), n/2, s, i+2,*cmp};
-		pthread_create(&t2,NULL,par_sort,arg2);
-	}
-	if(i+1<NBR_THREADS)
+		arg_struct_t arg1 = {base, n/2, s, i+1, cmp};
+		pthread_create(&t1,NULL,thread_sort,&arg1);
+		arg_struct_t arg2 = {(char*)(base)+(s*(n/2)), n/2, s, i+2,cmp};
+		pthread_create(&t2,NULL,thread_sort,&arg2);
+		pthread_join(t1,NULL);
+		pthread_join(t2,NULL);
+//fixa ihop delarna
+	}else	if(i+1<NBR_THREADS)
 	{
-		arg_struct_t arg1 = {base, n/2, s, i+1, *cmp};
-		pthread_create(&t1,NULL,par_sort,arg1);
+		arg_struct_t arg1 = {base, n/2, s, i+1, cmp};
+		pthread_create(&t1,NULL,thread_sort,&arg1);
+		pthread_join(t1,NULL);
+		qsort((char*)(base)+(s*(n/2)), n/2, s,cmp);
+		//fixa ihop delarna
 	} else{
-		qsort
-	}
-	if(i+1<NBR_THREADS){
-		pthread_join()
+		qsort(base,n,s,cmp);
 	}
 
 
 }
 
 static int cmp(const void* ap, const void* bp)
-{	
+{
 	/* you need to modify this function to compare doubles. */
 
 	const double* apd = ap;
 	const double* bpd = bp;
 
-	return *apd-*bpd; 
+	return *apd-*bpd;
 }
 
 int main(int ac, char** av)
@@ -86,7 +102,7 @@ int main(int ac, char** av)
 	start = sec();
 
 #ifdef PARALLELL
-	par_sort(a, n, sizeof a[0], cmp);
+	par_sort(a, n, sizeof a[0],0, cmp);
 #else
 	qsort(a, n, sizeof a[0], cmp);
 #endif
