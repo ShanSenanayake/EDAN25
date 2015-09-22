@@ -66,8 +66,7 @@ size_t partition(double* base,size_t size){
 					base[j] = temp;
 					i++;
 					j--;
-			}
-			if (base[i] <= pivot){
+			}else if (base[i] <= pivot){
 				i++;
 			}else if(base[j] > pivot){
 				j--;
