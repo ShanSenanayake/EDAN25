@@ -51,16 +51,27 @@ size_t partition(double* base,size_t size){
 		size_t i = 0;
 		size_t j = size -1;
 		while(i != j){
-			if(base[j] <= pivot){
-				//swap
-				double temp = base[j];
-				base[j] = base[i];
-				base[j] = temp;
+			// if(base[j] <= pivot){
+			// 	//swap
+			// 	double temp = base[j];
+			// 	base[j] = base[i];
+			// 	base[j] = temp;
+			// 	i++;
+			// }else{
+			// 	j--;
+			// }
+			if (base[i] > pivot && base[j] <= pivot){
+					double temp = base[j];
+					base[j] = base[i];
+					base[j] = temp;
+					i++;
+					j--;
+			}
+			if (base[i] <= pivot){
 				i++;
-			}else{
+			}else if(base[j] > pivot){
 				j--;
 			}
-
 		}
 		if(base[i] > pivot)
 			return i;
