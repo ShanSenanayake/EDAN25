@@ -22,7 +22,6 @@ struct arg_struct_t
 	void* base;
 	size_t n;
 	size_t s;
-	int i;
 	int (*cmp)(const void*, const void*);
 };
 
@@ -61,7 +60,7 @@ size_t partition(double* base,size_t size){
 			}else{
 				j--;
 			}
-			
+
 		}
 		if(base[i] > pivot)
 			return i;
