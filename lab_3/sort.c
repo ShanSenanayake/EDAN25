@@ -22,7 +22,6 @@ struct arg_struct_t
 	void* base;
 	size_t n;
 	size_t s;
-	int i;
 	int (*cmp)(const void*, const void*);
 };
 
@@ -49,24 +48,35 @@ void thread_sort(void *args)
 
 size_t partition(double* base,size_t size){
 		double pivot = base[size/2];
+		//printf("size %zu, pivot %f\n", size ,pivot);
 		size_t i = 0;
 		size_t j = size -1;
 		while(i != j){
+			//printf("%zu, %zu\n", i ,j);
 			if(base[j] <= pivot){
+				//printf("swapping\n");
 				//swap
 				double temp = base[j];
 				base[j] = base[i];
-				base[j] = temp;
+				base[i] = temp;
+				//printf("jm m1\n");
 				i++;
 			}else{
 				j--;
 			}
-			
+
 		}
-		if(base[i] > pivot)
+		for(j = 0; j<size;j++){
+			//printf("%f, index %zu\n" ,base[j],j);
+		}
+		//printf("%zu\n", i);
+		if(base[i] > pivot){
+			//printf("0\n");
 			return i;
-		else
+		}else{
+			//printf("+1\n");
 			return i+1;
+		}
 }
 
 void par_sort(
@@ -78,6 +88,7 @@ void par_sort(
 
 	int split = 0;
 	//lock and handle mutex stuff
+
 	pthread_mutex_lock(&thread_sum);
 	//change n in if to higher number to potentially  decrease load balancing problem
 	if(n_thread<NBR_THREADS && n > 1 ){
@@ -88,11 +99,12 @@ void par_sort(
 	//unlock mutex stuff
 	pthread_mutex_unlock(&thread_sum);
 
+
 	if(split){
 		pthread_t t;
 		size_t left_size = partition(base, n);
 		size_t right_size  = n - left_size;
-		void* new_base = (char*)(base) + (s*(left_size));
+		void* new_base = ((double*)(base)) + ((left_size));
 		arg_struct_t arg = {new_base,right_size,s,cmp};
 		pthread_create(&t,NULL,thread_sort,&arg);
 		par_sort(base,left_size,s,cmp);
@@ -118,7 +130,9 @@ void par_sort(
 		qsort((char*)(base)+(s*(n/2)), n/2, s,cmp);
 		//fixa ihop delarna
 	}*/ else{
+		printf("workload %zu\n", n);
 		qsort(base,n,s,cmp);
+
 	}
 
 
@@ -131,7 +145,8 @@ static int cmp(const void* ap, const void* bp)
 	const double* apd = ap;
 	const double* bpd = bp;
 
-	return *apd-*bpd;
+	//return *apd-*bpd;
+	return *apd < *bpd ? -1 : *apd == *bpd ? 0 : 1;
 }
 
 int main(int ac, char** av)
@@ -139,6 +154,7 @@ int main(int ac, char** av)
 	int		n = 2000000;
 	int		i;
 	double*		a;
+	double*		b;
 	double		start, end;
 
 	pthread_mutex_init(&thread_sum, NULL);
@@ -150,27 +166,39 @@ int main(int ac, char** av)
 
 
 	a = malloc(n * sizeof a[0]);
-	for (i = 0; i < n; i++)
+	b = malloc(n* sizeof a[0]);
+	for (i = 0; i < n; i++){
 		a[i] = rand();
+		b[i] = a[i];
+	}
 
 	start = sec();
 
 #ifdef PARALLELL
-	par_sort(a, n, sizeof a[0], cmp);
 	printf("runing parallell..\n");
+	par_sort(a, n, sizeof a[0], cmp);
 #else
 	qsort(a, n, sizeof a[0], cmp);
 	printf("running sequential..\n");
 #endif
 
 	end = sec();
+	double par_time = end - start;
+	start = sec();
 
-	printf("%1.2f s\n", end - start);
-#ifdef PRINT
-	for(i = 0; i< n; i++)
-		printf("%G\n",a[i]);
-#endif
+
+	qsort(b,n,sizeof a[0], cmp);
+
+	end = sec();
+
+	printf("seq: %1.2f s\n", end - start);
+	printf("par: %1.2f s\n",par_time);
+
+
 	free(a);
+	pthread_mutex_destroy(&thread_sum);
+	pthread_exit(NULL);
+	free(b);
 
 	return 0;
 }
