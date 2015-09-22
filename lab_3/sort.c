@@ -96,6 +96,7 @@ void par_sort(
 		arg_struct_t arg = {new_base,right_size,s,cmp};
 		pthread_create(&t,NULL,thread_sort,&arg);
 		par_sort(base,left_size,s,cmp);
+		pthread_join(t,NULL);
 
 	}
 
@@ -156,17 +157,19 @@ int main(int ac, char** av)
 
 #ifdef PARALLELL
 	par_sort(a, n, sizeof a[0], cmp);
+	printf("runing parallell..\n");
 #else
 	qsort(a, n, sizeof a[0], cmp);
+	printf("running sequential..\n");
 #endif
 
 	end = sec();
 
 	printf("%1.2f s\n", end - start);
-
+#ifdef PRINT
 	for(i = 0; i< n; i++)
 		printf("%G\n",a[i]);
-
+#endif
 	free(a);
 
 	return 0;
