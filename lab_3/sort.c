@@ -52,6 +52,7 @@ size_t partition(double* base,size_t size){
 		size_t i = 0;
 		size_t j = size -1;
 		while(i != j){
+
 			//printf("%zu, %zu\n", i ,j);
 			if(base[j] <= pivot){
 				//printf("swapping\n");
@@ -60,23 +61,32 @@ size_t partition(double* base,size_t size){
 				base[j] = base[i];
 				base[i] = temp;
 				//printf("jm m1\n");
-				i++;
+
+
 			}else{
 				j--;
 			}
+			/*if (base[i] > pivot && base[j] <= pivot){
+					double temp = base[j];
+					base[j] = base[i];
+					base[i] = temp;
+					i++;
+					j--;
+			}else if (base[i] <= pivot){
+
+				i++;
+			}else if(base[j] > pivot){
+				j--;
+			}*/
+
 
 		}
-		for(j = 0; j<size;j++){
-			//printf("%f, index %zu\n" ,base[j],j);
-		}
-		//printf("%zu\n", i);
-		if(base[i] > pivot){
-			//printf("0\n");
+
+		if(base[i] > pivot)
 			return i;
-		}else{
-			//printf("+1\n");
+		}else
 			return i+1;
-		}
+	
 }
 
 void par_sort(
