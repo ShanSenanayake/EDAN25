@@ -31,8 +31,7 @@ typedef  struct arg_struct_t arg_struct_t;
 void par_sort(
 	void*		base,	// Array to sort.
 	size_t		n,	// Number of elements in base.
-	size_t		s,	// Size of each element.
-	int 		i,
+	size_t		s,	// Size of each eleme
 	int		(*cmp)(const void*, const void*)); // Behaves like strcmp
 
 static double sec(void)
@@ -45,25 +44,62 @@ static double sec(void)
 void thread_sort(void *args)
 {
 	arg_struct_t* t = (arg_struct_t*)args;
-	par_sort(t->base,t->n,t->s,t->i,t->cmp);
+	par_sort(t->base,t->n,t->s,t->cmp);
+}
+
+size_t partition(double* base,size_t size){
+		double pivot = base[size/2];
+		size_t i = 0;
+		size_t j = size -1;
+		while(i != j){
+			if(base[j] <= pivot){
+				//swap
+				double temp = base[j];
+				base[j] = base[i];
+				base[j] = temp;
+				i++;
+			}else{
+				j--;
+			}
+			
+		}
+		if(base[i] > pivot)
+			return i;
+		else
+			return i+1;
 }
 
 void par_sort(
 	void*		base,	// Array to sort.
 	size_t		n,	// Number of elements in base.
-	size_t		s,	// Size of each element.
-	int 		i,
+	size_t		s,	// Size of each element
 	int		(*cmp)(const void*, const void*)) // Behaves like strcmp
 {
 
+	int split = 0;
 	//lock and handle mutex stuff
 	pthread_mutex_lock(&thread_sum);
-
+	//change n in if to higher number to potentially  decrease load balancing problem
+	if(n_thread<NBR_THREADS && n > 1 ){
+		split = 1;
+		n_thread++;
+	}
 	//do stuff with mutex
 	//unlock mutex stuff
 	pthread_mutex_unlock(&thread_sum);
 
-	pthread_t t1,t2;
+	if(split){
+		pthread_t t;
+		size_t left_size = partition(base, n);
+		size_t right_size  = n - left_size;
+		void* new_base = (char*)(base) + (s*(left_size));
+		arg_struct_t arg = {new_base,right_size,s,cmp};
+		pthread_create(&t,NULL,thread_sort,&arg);
+		par_sort(base,left_size,s,cmp);
+
+	}
+
+	/*pthread_t t1,t2;
 	if(i+2<NBR_THREADS)
 	{
 		arg_struct_t arg1 = {base, n/2, s, i+1, cmp};
@@ -80,7 +116,7 @@ void par_sort(
 		pthread_join(t1,NULL);
 		qsort((char*)(base)+(s*(n/2)), n/2, s,cmp);
 		//fixa ihop delarna
-	} else{
+	}*/ else{
 		qsort(base,n,s,cmp);
 	}
 
@@ -119,7 +155,7 @@ int main(int ac, char** av)
 	start = sec();
 
 #ifdef PARALLELL
-	par_sort(a, n, sizeof a[0],0, cmp);
+	par_sort(a, n, sizeof a[0], cmp);
 #else
 	qsort(a, n, sizeof a[0], cmp);
 #endif
@@ -127,6 +163,9 @@ int main(int ac, char** av)
 	end = sec();
 
 	printf("%1.2f s\n", end - start);
+
+	for(i = 0; i< n; i++)
+		printf("%G\n",a[i]);
 
 	free(a);
 
