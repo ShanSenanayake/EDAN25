@@ -22,6 +22,7 @@ struct arg_struct_t
 	void* base;
 	size_t n;
 	size_t s;
+	size_t min_size;
 	int (*cmp)(const void*, const void*);
 };
 
@@ -31,6 +32,7 @@ void par_sort(
 	void*		base,	// Array to sort.
 	size_t		n,	// Number of elements in base.
 	size_t		s,	// Size of each eleme
+	size_t		min_size, //max size of n
 	int		(*cmp)(const void*, const void*)); // Behaves like strcmp
 
 static double sec(void)
@@ -43,11 +45,36 @@ static double sec(void)
 void thread_sort(void *args)
 {
 	arg_struct_t* t = (arg_struct_t*)args;
-	par_sort(t->base,t->n,t->s,t->cmp);
+	par_sort(t->base,t->n,t->s,t->min_size,t->cmp);
+}
+
+static int cmp(const void* ap, const void* bp)
+{
+	/* you need to modify this function to compare doubles. */
+
+	const double* apd = ap;
+	const double* bpd = bp;
+
+	//return *apd-*bpd;
+	return *apd < *bpd ? -1 : *apd == *bpd ? 0 : 1;
+}
+
+double select_pivot(double* base, size_t size){
+	size_t sample_size = size/11;
+	double pivot[11];
+	size_t i = 0;
+	size_t j;
+	for(j = 0; j<11; ++j){
+		pivot[j] = base[i];
+		i += sample_size;
+	}
+	qsort(pivot, 11, 8, cmp);
+	return pivot[5];
+
 }
 
 size_t partition(double* base,size_t size){
-		double pivot = base[size/2];
+		double pivot = select_pivot(base,size);
 		//printf("size %zu, pivot %f\n", size ,pivot);
 		size_t i = 0;
 		size_t j = size -1;
@@ -93,6 +120,7 @@ void par_sort(
 	void*		base,	// Array to sort.
 	size_t		n,	// Number of elements in base.
 	size_t		s,	// Size of each element
+	size_t		min_size, //max size of n
 	int		(*cmp)(const void*, const void*)) // Behaves like strcmp
 {
 
@@ -101,7 +129,7 @@ void par_sort(
 
 	pthread_mutex_lock(&thread_sum);
 	//change n in if to higher number to potentially  decrease load balancing problem
-	if(n_thread<NBR_THREADS && n > 1 ){
+	if(n_thread<NBR_THREADS && n > min_size ){
 		split = 1;
 		n_thread++;
 	}
@@ -116,9 +144,9 @@ void par_sort(
 		size_t left_size = partition(base, n);
 		size_t right_size  = n - left_size;
 		void* new_base = ((double*)(base)) + ((left_size));
-		arg_struct_t arg = {new_base,right_size,s,cmp};
+		arg_struct_t arg = {new_base,right_size,s,min_size,cmp};
 		pthread_create(&t,NULL,thread_sort,&arg);
-		par_sort(base,left_size,s,cmp);
+		par_sort(base,left_size,s,min_size,cmp);
 		pthread_join(t,NULL);
 
 	}
@@ -149,16 +177,7 @@ void par_sort(
 
 }
 
-static int cmp(const void* ap, const void* bp)
-{
-	/* you need to modify this function to compare doubles. */
 
-	const double* apd = ap;
-	const double* bpd = bp;
-
-	//return *apd-*bpd;
-	return *apd < *bpd ? -1 : *apd == *bpd ? 0 : 1;
-}
 
 int main(int ac, char** av)
 {
@@ -186,7 +205,7 @@ int main(int ac, char** av)
 	start = sec();
 
 	printf("runing parallell..\n");
-	par_sort(a, n, sizeof a[0], cmp);
+	par_sort(a, n, sizeof a[0], (double)(n)/NBR_THREADS, cmp);
 
 
 	end = sec();
