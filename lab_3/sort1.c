@@ -29,11 +29,11 @@ struct arg_struct_t
 typedef  struct arg_struct_t arg_struct_t;
 
 void par_sort(
-	void*		base,	// Array to sort.
-	size_t		n,	// Number of elements in base.
-	size_t		s,	// Size of each eleme
-	size_t		min_size, //max size of n
-	int		(*cmp)(const void*, const void*)); // Behaves like strcmp
+		void*		base,	// Array to sort.
+		size_t		n,	// Number of elements in base.
+		size_t		s,	// Size of each eleme
+		size_t		min_size, //max size of n
+		int		(*cmp)(const void*, const void*)); // Behaves like strcmp
 
 static double sec(void)
 {
@@ -60,68 +60,68 @@ static int cmp(const void* ap, const void* bp)
 }
 
 double select_pivot(double* base, size_t size){
-	size_t sample_size = size/11;
-	double pivot[11];
+	size_t sample_size = size/25;
+	double pivot[25];
 	size_t i = 0;
 	size_t j;
-	for(j = 0; j<11; ++j){
+	for(j = 0; j<25; ++j){
 		pivot[j] = base[i];
 		i += sample_size;
 	}
-	qsort(pivot, 11, 8, cmp);
-	return pivot[5];
+	qsort(pivot, 25, 8, cmp);
+	return pivot[12];
 
 }
 
 size_t partition(double* base,size_t size){
-		double pivot = select_pivot(base,size);
-		//printf("size %zu, pivot %f\n", size ,pivot);
-		size_t i = 0;
-		size_t j = size -1;
-		while(i != j){
+	double pivot = select_pivot(base,size);
+	//printf("size %zu, pivot %f\n", size ,pivot);
+	size_t i = 0;
+	size_t j = size -1;
+	while(i != j){
 
-			//printf("%zu, %zu\n", i ,j);
-			if(base[j] <= pivot){
-				//printf("swapping\n");
-				//swap
-				double temp = base[j];
-				base[j] = base[i];
-				base[i] = temp;
-				//printf("jm m1\n");
-				i++;
+		//printf("%zu, %zu\n", i ,j);
+		if(base[j] <= pivot){
+			//printf("swapping\n");
+			//swap
+			double temp = base[j];
+			base[j] = base[i];
+			base[i] = temp;
+			//printf("jm m1\n");
+			i++;
 
-			}else{
-				j--;
-			}
-			/*if (base[i] > pivot && base[j] <= pivot){
-					double temp = base[j];
-					base[j] = base[i];
-					base[i] = temp;
-					i++;
-					j--;
-			}else if (base[i] <= pivot){
-
-				i++;
-			}else if(base[j] > pivot){
-				j--;
-			}*/
-
-
+		}else{
+			j--;
 		}
+		/*if (base[i] > pivot && base[j] <= pivot){
+		  double temp = base[j];
+		  base[j] = base[i];
+		  base[i] = temp;
+		  i++;
+		  j--;
+		  }else if (base[i] <= pivot){
 
-		if(base[i] > pivot)
-			return i;
-		else
-			return i+1;
+		  i++;
+		  }else if(base[j] > pivot){
+		  j--;
+		  }*/
+
+
+	}
+	printf("pivot %1.2f \n",(double)(i)/size);
+	if(base[i] > pivot)
+		return i;
+	else
+		return i+1;
 
 }
 
 void par_sort(
-	void*		base,	// Array to sort.
-	size_t		n,	// Number of elements in base.
-	size_t		s,	// Size of each element
-	size_t		min_size, //max size of n
-	int		(*cmp)(const void*, const void*)) // Behaves like strcmp
+		void*		base,	// Array to sort.
+		size_t		n,	// Number of elements in base.
+		size_t		s,	// Size of each element
+		size_t		min_size, //max size of n
+		int		(*cmp)(const void*, const void*)) // Behaves like strcmp
 {
 
 	int split = 0;
@@ -152,22 +152,22 @@ void par_sort(
 	}
 
 	/*pthread_t t1,t2;
-	if(i+2<NBR_THREADS)
-	{
-		arg_struct_t arg1 = {base, n/2, s, i+1, cmp};
-		pthread_create(&t1,NULL,thread_sort,&arg1);
-		arg_struct_t arg2 = {(char*)(base)+(s*(n/2)), n/2, s, i+2,cmp};
-		pthread_create(&t2,NULL,thread_sort,&arg2);
-		pthread_join(t1,NULL);
-		pthread_join(t2,NULL);
-//fixa ihop delarna
+	  if(i+2<NBR_THREADS)
+	  {
+	  arg_struct_t arg1 = {base, n/2, s, i+1, cmp};
+	  pthread_create(&t1,NULL,thread_sort,&arg1);
+	  arg_struct_t arg2 = {(char*)(base)+(s*(n/2)), n/2, s, i+2,cmp};
+	  pthread_create(&t2,NULL,thread_sort,&arg2);
+	  pthread_join(t1,NULL);
+	  pthread_join(t2,NULL);
+	//fixa ihop delarna
 	}else	if(i+1<NBR_THREADS)
 	{
-		arg_struct_t arg1 = {base, n/2, s, i+1, cmp};
-		pthread_create(&t1,NULL,thread_sort,&arg1);
-		pthread_join(t1,NULL);
-		qsort((char*)(base)+(s*(n/2)), n/2, s,cmp);
-		//fixa ihop delarna
+	arg_struct_t arg1 = {base, n/2, s, i+1, cmp};
+	pthread_create(&t1,NULL,thread_sort,&arg1);
+	pthread_join(t1,NULL);
+	qsort((char*)(base)+(s*(n/2)), n/2, s,cmp);
+	//fixa ihop delarna
 	}*/ else{
 		printf("workload %zu\n", n);
 		qsort(base,n,s,cmp);
@@ -212,14 +212,14 @@ int main(int ac, char** av)
 	double par_time = end - start;
 	start = sec();
 
-printf("running qsort..\n");
+	printf("running qsort..\n");
 	qsort(b,n,sizeof a[0], cmp);
 
 	end = sec();
 
 	printf("running assert...\n");
 	for(i = 0; i<n;i++){
-			assert(a[i] == b[i]);
+		assert(a[i] == b[i]);
 	}
 
 	printf("seq: %1.2f s\n", end - start);

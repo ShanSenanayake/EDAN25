@@ -81,7 +81,7 @@ size_t partition(double* base,size_t size){
 
 
 		}
-
+		printf("pivot %1.2f\n", (double)(i)/size);
 		if(base[i] > pivot)
 			return i;
 		else
