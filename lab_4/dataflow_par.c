@@ -8,9 +8,20 @@
 #include "error.h"
 #include "list.h"
 #include "set.h"
+#define NBR_THREADS (2)
 
 typedef struct vertex_t	vertex_t;
 typedef struct task_t	task_t;
+typedef struct arg_struct_t arg_struct_t;
+
+pthread_mutex_t work_mutex;
+
+struct arg_struct_t{
+	//enter arguments
+	list_t** worklist;
+
+}
+
 
 /* cfg_t: a control flow graph. */
 struct cfg_t {
@@ -114,32 +125,24 @@ void setbit(cfg_t* cfg, size_t v, set_type_t type, size_t index)
 	set(cfg->vertex[v].set[type], index);
 }
 
-void liveness(cfg_t* cfg)
+
+void thread_liveness(void *args)
 {
-	vertex_t*	u;
-	vertex_t*	v;
-	set_t*		prev;
-	size_t		i;
-	size_t		j;
-	list_t*		worklist;
-	list_t*		p;
-	list_t*		h;
+	arg_struct_t* t = (arg_struct_t*)args;
+	list_t** worklist = t->worklist;
+	set_t* prev;
+	set_t* temp;
+	vertex_t* u;
 
-	worklist = NULL;
 
-	for (i = 0; i < cfg->nvertex; ++i) {
-		u = &cfg->vertex[i];
-
-		insert_last(&worklist, u);
-		u->listed = true;
-	}
-
-	while ((u = remove_first(&worklist)) != NULL) {
+	do{
+		pthread_mutex_lock(&work_mutex);
+		u = remove_first(worklist));
+		pthread_mutex_unlock(&work_mutex);
 		u->listed = false;
-
 		reset(u->set[OUT]);
 
-		for (j = 0; j < u->nsucc; ++j)
+		for( j = 0; j< u->nsucc; ++J)
 			or(u->set[OUT], u->set[OUT], u->succ[j]->set[IN]);
 
 		prev = u->prev;
@@ -161,8 +164,40 @@ void liveness(cfg_t* cfg)
 				p = p->succ;
 
 			} while (p != h);
-		}
+	}while(u != NULL);
+}
+
+void liveness(cfg_t* cfg)
+{
+
+	vertex_t*	u;
+	vertex_t*	v;
+	set_t*		prev;
+	size_t		i;
+	size_t		j;
+	list_t**		worklist = malloc(list_t*);
+	list_t*		p;
+	list_t*		h;
+
+
+	for (i = 0; i < cfg->nvertex; ++i) {
+		u = &cfg->vertex[i];
+
+		insert_last(worklist, u);
+		u->listed = true;
 	}
+
+	arg_struct_t* args = {worklist};
+	pthread_t thread[NBR_THREADS];
+
+	for(i = 0; i<NBR_THREADS; ++i)
+		pthread_create(&thread[i], NULL, thread_liveness, &args);
+
+	for(i = 0; i<NBR_THREADS; ++i)
+		pthread_join(thread[i], NULL);
+
+
+
 }
 
 void print_sets(cfg_t* cfg, FILE *fp)
