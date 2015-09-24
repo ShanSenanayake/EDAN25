@@ -5,20 +5,20 @@ CFLAGS		= -m64 -g -Wall -pedantic -Werror -std=c99
 CFLAGS		= -O3 -maltivec -Wall -pedantic -std=c99
 CFLAGS		= -O3 -Wall -pedantic -std=c99
 
-OBJS		= main.o list.o error.o random.o set.o dataflow.o
+OBJS		= main.o list.o error.o random.o set.o dataflow_par.o
 
 OUT		= live
 
 LDFLAGS		= -lpthread -static
 
-S=100000
-V=100000
+S=1000000
+V=1000000
 U=4
 A=1000
 T=4
 P=0
 
-all: $(OBJS)	
+all: $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o $(OUT)
 	#valgrind --tool=helgrind ./$(OUT) $(S) $(V) $(U) $(A) $(T) $(P) $(L)
 	./$(OUT) $(S) $(V) $(U) $(A) $(T) $(P)

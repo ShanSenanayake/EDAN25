@@ -8,7 +8,7 @@
 #include "error.h"
 #include "list.h"
 #include "set.h"
-#define NBR_THREADS (2)
+#define NBR_THREADS (4)
 
 typedef struct vertex_t	vertex_t;
 typedef struct task_t	task_t;
@@ -20,7 +20,7 @@ struct arg_struct_t{
 	//enter arguments
 	list_t** worklist;
 
-}
+};
 
 
 /* cfg_t: a control flow graph. */
@@ -131,18 +131,24 @@ void thread_liveness(void *args)
 	arg_struct_t* t = (arg_struct_t*)args;
 	list_t** worklist = t->worklist;
 	set_t* prev;
-	set_t* temp;
 	vertex_t* u;
+	size_t		j;
+	list_t*		p;
+	list_t*		h;
+	vertex_t*	v;
 
 
 	do{
 		pthread_mutex_lock(&work_mutex);
-		u = remove_first(worklist));
+		u = remove_first(worklist);
 		pthread_mutex_unlock(&work_mutex);
+		if(u ==NULL)
+			return;
 		u->listed = false;
 		reset(u->set[OUT]);
 
-		for( j = 0; j< u->nsucc; ++J)
+		//pthread_mutex_lock(&work_mutex);
+		for( j = 0; j< u->nsucc; ++j)
 			or(u->set[OUT], u->set[OUT], u->succ[j]->set[IN]);
 
 		prev = u->prev;
@@ -158,45 +164,48 @@ void thread_liveness(void *args)
 				v = p->data;
 				if (!v->listed) {
 					v->listed = true;
-					insert_last(&worklist, v);
+					pthread_mutex_lock(&work_mutex);
+					insert_last(worklist, v);
+					pthread_mutex_unlock(&work_mutex);
 				}
 
 				p = p->succ;
 
 			} while (p != h);
+		//pthread_mutex_unlock(&work_mutex);
+		}
 	}while(u != NULL);
+
 }
 
 void liveness(cfg_t* cfg)
 {
 
 	vertex_t*	u;
-	vertex_t*	v;
-	set_t*		prev;
+
 	size_t		i;
-	size_t		j;
-	list_t**		worklist = malloc(list_t*);
-	list_t*		p;
-	list_t*		h;
+
+	list_t*		worklist = NULL;
+	//*worklist = NULL;
+
 
 
 	for (i = 0; i < cfg->nvertex; ++i) {
 		u = &cfg->vertex[i];
 
-		insert_last(worklist, u);
+		insert_last(&worklist, u);
 		u->listed = true;
 	}
 
-	arg_struct_t* args = {worklist};
+	arg_struct_t args = {&worklist};
 	pthread_t thread[NBR_THREADS];
 
-	for(i = 0; i<NBR_THREADS; ++i)
-		pthread_create(&thread[i], NULL, thread_liveness, &args);
+	for(i = 0; i<NBR_THREADS; ++i){
+		pthread_create(&thread[i], NULL, &thread_liveness, &args);
+	}
 
 	for(i = 0; i<NBR_THREADS; ++i)
 		pthread_join(thread[i], NULL);
-
-
 
 }
 
