@@ -9,10 +9,10 @@ OBJS		= main.o list.o error.o random.o set.o dataflow_par.o
 
 OUT		= live
 
-LDFLAGS		= -lpthread -static
+LDFLAGS		= -lpthread
 
-S=1000000
-V=1000000
+S=100000
+V=100000
 U=4
 A=1000
 T=4

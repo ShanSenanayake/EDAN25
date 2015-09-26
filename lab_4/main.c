@@ -131,7 +131,7 @@ int main(int argc, char** argv)
 
 	printf("liveness...\n\n");
 	begin = sec();
-	liveness(cfg);
+	liveness(cfg, begin);
 	end = sec();
 
 	printf("T = %8.4lf s\n\n", end-begin);

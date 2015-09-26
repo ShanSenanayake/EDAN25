@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
 #include <inttypes.h>
 #include <pthread.h>
 #include "dataflow.h"
@@ -13,12 +14,229 @@
 typedef struct vertex_t	vertex_t;
 typedef struct task_t	task_t;
 typedef struct arg_struct_t arg_struct_t;
+//typedef struct arena_t        arena_t;
+typedef struct arena_list_t   arena_list_t;
+
+/*struct arena_t{
+    size_t offset;
+    size_t size;
+    void* allocated;
+};
+
+static arena_t* arena = NULL;
+
+
+static arena_t* create_arena(size_t size)
+{
+	arena_t* arena = (arena_t*)malloc(sizeof(arena_t));
+	arena->allocated=malloc(size);
+	arena->size=size;
+	arena->offset=0;
+	return arena;
+}
+
+static void free_arena(arena_t* arena)
+{
+	free(arena->allocated);
+	free(arena);
+}
+
+static void* amalloc(arena_t* arena, size_t size)
+{
+	size_t would_be_allocated=arena->offset+size;
+	if(would_be_allocated>arena->size){
+		return NULL;
+	}
+	void* space=arena->allocated+arena->offset;
+	arena->offset=would_be_allocated;
+  //printf("offset %zu\n", arena -> offset);
+	return space;
+}*/
+
+
+
+struct arena_list_t{
+    arena_list_t* pred;
+    arena_list_t* succ;
+    void* data;
+};
+
+static arena_list_t* free_head = NULL;
+
+void take_out(arena_list_t* list)
+{
+	list->pred->succ = list->succ;
+	list->succ->pred = list->pred;
+	list->succ = list->pred = list;
+}
+
+int empty(arena_list_t* list){
+	return list == list->succ;
+}
+
+arena_list_t* anew_list(void *data)
+{
+
+  /*if(arena == NULL){
+  // printf("should make new arena\n");
+    arena = create_arena(4096*10000);
+  }*/
+	arena_list_t*		list;
+  //printf("should malloc arena\n");
+	//list = amalloc(arena,sizeof(arena_list_t));
+	if(free_head == NULL || empty(free_head)){
+		list = malloc(sizeof(arena_list_t));
+	}else{
+		list = free_head->succ;
+		take_out(list);
+	}
+	if (list == NULL) {
+		fprintf(stderr, "out of memory in %s\n", __func__);
+		exit(1);
+	}
+
+	list->succ = list->pred = list;
+	list->data = data;
+
+	return list;
+}
+
+void ainsert_last(arena_list_t** list1, void *p)
+{
+	arena_list_t*		tmp;
+	arena_list_t*		list2;
+
+	list2 = anew_list(p);
+
+	if (*list1 == NULL)
+		*list1 = list2;
+	else if (list2 != NULL) {
+		(*list1)->pred->succ = list2;
+		list2->pred->succ = *list1;
+		tmp	= (*list1)->pred;
+		(*list1)->pred = list2->pred;
+		list2->pred = tmp;
+	}
+}
+
+void aappend(arena_list_t** list1, arena_list_t* list2)
+{
+	arena_list_t*		tmp;
+
+	if (*list1 == NULL)
+		*list1 = list2;
+	else if (list2 != NULL) {
+		(*list1)->pred->succ = list2;
+		list2->pred->succ = *list1;
+		tmp	= (*list1)->pred;
+		(*list1)->pred = list2->pred;
+		list2->pred = tmp;
+	}
+}
+
+void adelete_list(arena_list_t *list)
+{
+	list->pred->succ = list->succ;
+	list->succ->pred = list->pred;
+
+	list->succ = free_head;
+	list->pred = free_head->pred;
+	free_head-> pred->succ = list;
+
+}
+
+void ainsert_before(arena_list_t** list, void *data)
+{
+	arena_list_t*		p;
+
+	p = anew_list(data);
+
+	if (*list == NULL)
+		*list = p;
+	else
+		aappend(&p, *list);
+}
+
+void ainsert_after(arena_list_t** list, void *data)
+{
+	arena_list_t*		p;
+	arena_list_t*		q;
+
+	p = anew_list(data);
+
+	if (*list == NULL)
+		*list = p;
+	else {
+		q = (*list)->succ;
+		aappend(&q, p);
+	}
+}
+
+size_t alength(arena_list_t *list)
+{
+	arena_list_t*		p;
+	size_t		n;
+
+	if (list == NULL)
+		return 0;
+	else {
+		p = list;
+		n = 0;
+		do {
+			++n;
+			p = p->succ;
+		} while (p != list);
+		return n;
+	}
+}
+
+void* aremove_first(arena_list_t** list)
+{
+	void*		data;
+	arena_list_t*		p;
+
+	if (*list == NULL)
+		return NULL;
+	p = *list;
+	data = p->data;
+
+	if (*list == (*list)->succ){
+		*list = NULL;
+	}
+	else
+		*list = p->succ;
+	adelete_list(p);
+	return data;
+}
+
+void afree_list(arena_list_t** list)
+{
+	arena_list_t*		p;
+	arena_list_t*		q;
+
+	p = *list;
+
+	if (p == NULL)
+		return;
+
+	p->pred->succ = NULL;
+
+	while (p != NULL) {
+		q = p;
+		p = p->succ;
+		free(q);
+	}
+	if(free_head != NULL)
+		afree_list(&free_head);
+  //free_arena(arena);
+	*list = NULL;
+}
 
 pthread_mutex_t work_mutex;
 
 struct arg_struct_t{
 	//enter arguments
-	list_t** worklist;
+	arena_list_t** worklist;
 
 };
 
@@ -129,7 +347,7 @@ void setbit(cfg_t* cfg, size_t v, set_type_t type, size_t index)
 void thread_liveness(void *args)
 {
 	arg_struct_t* t = (arg_struct_t*)args;
-	list_t** worklist = t->worklist;
+	arena_list_t** worklist = t->worklist;
 	set_t* prev;
 	vertex_t* u;
 	size_t		j;
@@ -140,7 +358,7 @@ void thread_liveness(void *args)
 
 	do{
 		pthread_mutex_lock(&work_mutex);
-		u = remove_first(worklist);
+		u = aremove_first(worklist);
 		pthread_mutex_unlock(&work_mutex);
 		if(u ==NULL)
 			return;
@@ -165,7 +383,7 @@ void thread_liveness(void *args)
 				if (!v->listed) {
 					v->listed = true;
 					pthread_mutex_lock(&work_mutex);
-					insert_last(worklist, v);
+					ainsert_last(worklist, v);
 					pthread_mutex_unlock(&work_mutex);
 				}
 
@@ -178,14 +396,14 @@ void thread_liveness(void *args)
 
 }
 
-void liveness(cfg_t* cfg)
+void liveness(cfg_t* cfg, double begin)
 {
 
 	vertex_t*	u;
-
+	vertex_t* n;
 	size_t		i;
-
-	list_t*		worklist = NULL;
+	free_head = anew_list(NULL);
+	arena_list_t*		worklist = NULL;
 	//*worklist = NULL;
 
 
@@ -193,9 +411,18 @@ void liveness(cfg_t* cfg)
 	for (i = 0; i < cfg->nvertex; ++i) {
 		u = &cfg->vertex[i];
 
-		insert_last(&worklist, u);
+		//printf("doing upper stuff %zu\n",i);
+		ainsert_last(&worklist, u);
+
+
 		u->listed = true;
 	}
+	/*struct timeval	tv;
+
+	gettimeofday(&tv, NULL);
+
+	double end =tv.tv_sec + 1e-6 * tv.tv_usec;
+	printf("T = %8.4lf s\n\n", end-begin);*/
 
 	arg_struct_t args = {&worklist};
 	pthread_t thread[NBR_THREADS];
@@ -203,6 +430,7 @@ void liveness(cfg_t* cfg)
 	for(i = 0; i<NBR_THREADS; ++i){
 		pthread_create(&thread[i], NULL, &thread_liveness, &args);
 	}
+
 
 	for(i = 0; i<NBR_THREADS; ++i)
 		pthread_join(thread[i], NULL);
