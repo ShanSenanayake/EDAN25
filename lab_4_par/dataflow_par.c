@@ -9,7 +9,8 @@
 #include "error.h"
 #include "list.h"
 #include "set.h"
-#define NBR_THREADS (4)
+#include <unistd.h>
+#define NBR_THREADS (2)
 
 typedef struct vertex_t	vertex_t;
 typedef struct task_t	task_t;
@@ -237,6 +238,7 @@ pthread_mutex_t work_mutex;
 struct arg_struct_t{
 	//enter arguments
 	arena_list_t** worklist;
+	size_t			size;
 
 };
 
@@ -348,20 +350,26 @@ void thread_liveness(void *args)
 {
 	arg_struct_t* t = (arg_struct_t*)args;
 	arena_list_t** worklist = t->worklist;
+	size_t		id = t->size;
 	set_t* prev;
 	vertex_t* u;
 	size_t		j;
 	list_t*		p;
 	list_t*		h;
 	vertex_t*	v;
-
+	size_t 		count = 0;
+	size_t		sum = 0;
+	//printf("this shoudl be zero workload %zu, id %zu\n", count,id);
 
 	do{
 		pthread_mutex_lock(&work_mutex);
 		u = aremove_first(worklist);
 		pthread_mutex_unlock(&work_mutex);
-		if(u ==NULL)
+		count++;
+		if(u ==NULL){
+			printf("workload %zu, id %zu\n", count,id);
 			return;
+		}
 		u->listed = false;
 		reset(u->set[OUT]);
 
@@ -394,9 +402,10 @@ void thread_liveness(void *args)
 		}
 	}while(u != NULL);
 
+
 }
 
-void liveness(cfg_t* cfg, double begin)
+void liveness(cfg_t* cfg)
 {
 
 	vertex_t*	u;
@@ -423,12 +432,14 @@ void liveness(cfg_t* cfg, double begin)
 
 	double end =tv.tv_sec + 1e-6 * tv.tv_usec;
 	printf("T = %8.4lf s\n\n", end-begin);*/
-
-	arg_struct_t args = {&worklist};
+	arg_struct_t args1[NBR_THREADS];
 	pthread_t thread[NBR_THREADS];
 
 	for(i = 0; i<NBR_THREADS; ++i){
-		pthread_create(&thread[i], NULL, &thread_liveness, &args);
+		args1[i].worklist = &worklist;
+		args1[i].size = i;
+
+		pthread_create(&thread[i], NULL, &thread_liveness, &args1[i]);
 	}
 
 

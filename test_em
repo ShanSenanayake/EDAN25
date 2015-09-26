@@ -1,0 +1,16 @@
+#!/bin/sh
+
+if [ "$#" -eq 1 ]
+then
+  SEED=$1
+else
+  SEED=0
+fi
+
+echo "running par..."
+(cd lab_4_par && make SEED=$SEED > ../par.o)
+echo "running original..."
+(cd lab_4_org && make SEED=$SEED > ../orig.o)
+echo "diffing par vs orig"
+diff orig.o par.o > d
+less d

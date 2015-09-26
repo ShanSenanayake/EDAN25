@@ -96,12 +96,13 @@ int main(int argc, char** argv)
 
 	progname	= argv[0];
 
-	if (argc == 7) {
+	if (argc == 8) {
 		nsym	 	= atoi(argv[1]);
 		n		= atoi(argv[2]);
 		max_succ	= atoi(argv[3]);
 		nactive	 	= atoi(argv[4]);
 		print	 	= atoi(argv[6]);
+		seed	 	= atoi(argv[7]);
 	} else {
 		nsym	 	= 100;
 		n		= 10;
@@ -115,11 +116,11 @@ int main(int argc, char** argv)
 	printf("max-succ  = %zu\n", max_succ);
 	printf("nactive   = %zu\n", nactive);
 
-	if (seed == 1)
-		init_random(seed);
-	else {
+	if (seed == 1){
 		printf("pid %d\n", getpid());
 		init_random(getpid());
+	}else {
+		init_random(seed);
 	}
 
 	printf("generating cfg...\n");
@@ -131,7 +132,7 @@ int main(int argc, char** argv)
 
 	printf("liveness...\n\n");
 	begin = sec();
-	liveness(cfg, begin);
+	liveness(cfg);
 	end = sec();
 
 	printf("T = %8.4lf s\n\n", end-begin);
