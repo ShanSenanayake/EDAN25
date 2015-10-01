@@ -11,8 +11,8 @@ OUT		= live
 
 LDFLAGS		= -lpthread
 
-S=100000
-V=100000
+S=5000
+V=5000
 U=4
 A=1000
 T=4
@@ -21,8 +21,8 @@ SEED=1
 
 all: $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o $(OUT)
-	#valgrind --tool=helgrind ./$(OUT) $(S) $(V) $(U) $(A) $(T) $(P) $(L)
-	./$(OUT) $(S) $(V) $(U) $(A) $(T) $(P) $(SEED)
+	valgrind --tool=helgrind ./$(OUT) $(S) $(V) $(U) $(A) $(T) $(P) $(SEED)
+	#./$(OUT) $(S) $(V) $(U) $(A) $(T) $(P) $(SEED)
 
 clean:
 	rm -f $(OUT) $(OBJS) cfg.dot

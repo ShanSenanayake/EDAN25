@@ -10,7 +10,7 @@
 #include "list.h"
 #include "set.h"
 #include <unistd.h>
-#define NBR_THREADS (2)
+#define NBR_THREADS (16)
 
 typedef struct vertex_t	vertex_t;
 typedef struct task_t	task_t;
@@ -259,6 +259,7 @@ struct vertex_t {
 	vertex_t**		succ;		/* successor vertices 		*/
 	list_t*			pred;		/* predecessor vertices		*/
 	bool			listed;		/* on worklist			*/
+  pthread_mutex_t mutex;
 };
 
 static void clean_vertex(vertex_t* v);
@@ -374,15 +375,20 @@ void thread_liveness(void *args)
 		reset(u->set[OUT]);
 
 		//pthread_mutex_lock(&work_mutex);
-		for( j = 0; j< u->nsucc; ++j)
+		for( j = 0; j< u->nsucc; ++j){
+      pthread_mutex_lock(&u->succ[j]->mutex);
 			or(u->set[OUT], u->set[OUT], u->succ[j]->set[IN]);
+      pthread_mutex_unlock(&u->succ[j]->mutex);
+    }
 
+
+		/* in our case liveness information... */
+    pthread_mutex_lock(&u->mutex);
 		prev = u->prev;
 		u->prev = u->set[IN];
 		u->set[IN] = prev;
-
-		/* in our case liveness information... */
 		propagate(u->set[IN], u->set[OUT], u->set[DEF], u->set[USE]);
+    pthread_mutex_unlock(&u->mutex);
 
 		if (u->pred != NULL && !equal(u->prev, u->set[IN])) {
 			p = h = u->pred;
@@ -412,6 +418,7 @@ void liveness(cfg_t* cfg)
 	vertex_t* n;
 	size_t		i;
 	free_head = anew_list(NULL);
+  pthread_mutex_init ( &work_mutex, NULL);
 	arena_list_t*		worklist = NULL;
 	//*worklist = NULL;
 
@@ -419,7 +426,7 @@ void liveness(cfg_t* cfg)
 
 	for (i = 0; i < cfg->nvertex; ++i) {
 		u = &cfg->vertex[i];
-
+    pthread_mutex_init ( &u->mutex, NULL);
 		//printf("doing upper stuff %zu\n",i);
 		ainsert_last(&worklist, u);
 
