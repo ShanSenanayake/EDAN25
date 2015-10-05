@@ -1,4 +1,4 @@
-file=a
+file=b
 
 echo $file.cc
 
