@@ -10,6 +10,8 @@ class worklist_t {
 	int*			a;
 	size_t			n;
 	size_t			total;	// sum a[0]..a[n-1]
+	std::mutex 		m;
+	std::condition_variable c;
 		
 public:
 	worklist_t(size_t max)
@@ -37,6 +39,8 @@ public:
 
 	void put(int num)
 	{
+		std::unique_lock<std::mutex> u(m);
+		c.notify_all();
 		a[num] += 1;
 		total += 1;
 	}
@@ -46,7 +50,7 @@ public:
 		int				i;
 		int				num;
 
-#if 0
+#if 1
 		/* hint: if your class has a mutex m
 		 * and a condition_variable c, you
 		 * can lock it and wait for a number 
@@ -91,6 +95,7 @@ static worklist_t*		worklist;
 static unsigned long long	sum;
 static int			iterations;
 static int			max;
+static std::mutex              	sum_lock;
 
 static void produce()
 {
@@ -116,7 +121,9 @@ static void consume()
 
 	while ((n = worklist->get()) > 0) {
 		f = factorial(n);
+		sum_lock.lock();
 		sum += f;
+		sum_lock.unlock();
 	}
 }
 
