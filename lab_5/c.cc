@@ -6,14 +6,24 @@
 #include <atomic>
 #include "timebase.h"
 
+class spinlock_t {
+	std::atomic_flag flag;
+	public:
+	void lock(){
+		while(flag.test_and_set(std::memory_order_acquire));
+	}
+
+	void unlock(){
+		flag.clear(std::memory_order_release);
+	}
+};
+
 class worklist_t {
 	int*			a;
 	size_t			n;
 	size_t			total;	// sum a[0]..a[n-1]
-	std::mutex 		m;
-	std::condition_variable c;
-		
-public:
+	spinlock_t		lock;		
+	public:
 	worklist_t(size_t max)
 	{
 		n = max+1;
@@ -39,10 +49,10 @@ public:
 
 	void put(int num)
 	{
-		std::unique_lock<std::mutex> u(m);
-		c.notify_all();
+		lock.lock();
 		a[num] += 1;
 		total += 1;
+		lock.unlock();
 	}
 
 	int get()
@@ -57,9 +67,12 @@ public:
 		 * (i.e. total > 0) as follows.
 		 *
 		 */
-
-		std::unique_lock<std::mutex>	u(m);
-
+		lock.lock();
+		while (total <= 0){
+			lock.unlock();
+			lock.lock();
+		}
+				
 		/* the lambda is a predicate that 
 		 * returns false when waiting should 
 		 * continue.
@@ -71,7 +84,6 @@ public:
 		 *
 		 */
 
-		c.wait(u, [this]() { return total > 0; } );
 #endif
 
 		for (i = 1; i <= n; i += 1)
@@ -87,6 +99,7 @@ public:
 		} else
 			i = 0;
 
+		lock.unlock();
 		return i;
 	}
 };
@@ -123,7 +136,7 @@ static void consume()
 		f = factorial(n);
 		//sum_lock.lock();
 		sum += f;
-	//	sum_lock.unlock();
+		//	sum_lock.unlock();
 	}
 }
 
@@ -151,7 +164,7 @@ int main(void)
 	double			end;
 	unsigned long long	correct;
 	int			i;
-	
+
 	printf("mutex/condvar and mutex for sum\n");
 
 	init_timebase();
