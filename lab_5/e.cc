@@ -7,14 +7,18 @@
 #include "timebase.h"
 
 class spinlock_t {
-	std::atomic_flag flag;
+	std::atomic<bool> flag;
+	//bool expected;
 	public:
 	void lock(){
-		while(flag.test_and_set(std::memory_order_acquire));
+		bool expected = false;
+		while(!flag.compare_exchange_weak(expected,true,std::memory_order_acq_rel,std::memory_order_acquire)){
+			expected = false;
+		}
 	}
 
 	void unlock(){
-		flag.clear(std::memory_order_release);
+		flag.store(false,std::memory_order_release);
 	}
 };
 
@@ -67,10 +71,16 @@ class worklist_t {
 		 * (i.e. total > 0) as follows.
 		 *
 		 */
-		lock.lock();
-		while (total <= 0){
-			lock.unlock();
+		//lock.lock();
+		//while (total <= 0){
+		//	lock.unlock();
+		//	lock.lock();
+		//}
+
+		for(;;) {
 			lock.lock();
+			if (total > 0) break;
+			lock.unlock();
 		}
 				
 		/* the lambda is a predicate that 
