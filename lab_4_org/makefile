@@ -11,8 +11,8 @@ OUT		= live
 
 LDFLAGS		= -lpthread
 
-S=100000
-V=100000
+S=50000
+V=50000
 U=4
 A=1000
 T=4
